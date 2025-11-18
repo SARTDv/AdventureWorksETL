@@ -1,0 +1,414 @@
+create_schema: |
+  CREATE SCHEMA IF NOT EXISTS dw
+
+set_search_path: |
+  SET search_path = dw
+
+dim_currency: |
+  CREATE TABLE IF NOT EXISTS dw.dim_currency (
+    currency_key           int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    currency_alternate_key char(3) NOT NULL,
+    currency_name          varchar(50) NOT NULL 
+  )
+
+# No es exacto, en OLTP no dan toda esta info pero son 10 entradas que pueden ser producto de revision, consideramos mejor cargarlas desde archivo
+# Formato: sales_territory_key|sales_territory_alternate_key|sales_territory_region|sales_territory_country|sales_territory_group|_
+dim_sales_territory: |
+  CREATE TABLE IF NOT EXISTS dw.dim_sales_territory (
+    sales_territory_key            int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sales_territory_alternate_key  int, 
+    sales_territory_region         varchar(50) NOT NULL,
+    sales_territory_country        varchar(50) NOT NULL,
+    sales_territory_group          varchar(50)
+  )
+
+dim_geography: |
+  CREATE TABLE IF NOT EXISTS dw.dim_geography (
+    geography_key                    int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    city                             varchar(30),  
+    state_province_code              varchar(3),  
+    state_province_name              varchar(50), 
+    country_region_code              varchar(3), 
+    country_region_name              varchar(50), 
+    postal_code                      varchar(15), 
+    sales_territory_key              int
+  )
+
+dim_customer: |
+  CREATE TABLE IF NOT EXISTS dw.dim_customer (
+    customer_key               int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    customer_alternate_key     varchar(15) NOT NULL,
+    geography_key              int NOT NULL,     
+    title                      varchar(8),  
+    first_name                 varchar(50),
+    middle_name                varchar(50), 
+    last_name                  varchar(50), 
+    name_style                 boolean DEFAULT false,
+    birth_date                 date,
+    marital_status             char(1),  
+    suffix                     varchar(10),
+    gender                     varchar(1), 
+    email_address              varchar(50),  
+    yearly_income              numeric(19,4),  
+    total_children             smallint,  
+    number_children_at_home    smallint,  
+    education                  varchar(40),  
+    house_owner_flag           char(1),  
+    number_cars_owned          smallint,  
+    address_line1              varchar(120), 
+    address_line2              varchar(120),  
+    phone                      varchar(20),
+    date_first_purchase        date, 
+    commute_distance           varchar(15)  
+  )
+
+# Esta dimension esta hecha por script, se decide cargarla por csv por facilidad
+#Formato: date_key|full_date_alternate_key|day_number_of_week|day_name_of_week|__|__|day_number_of_month|day_number_of_year|week_number_of_year|month_name|__|__|month_number_of_year|calendar_quarter|calendar_year|calendar_semester|fiscal_quarter|fiscal_year|fiscal_semester
+#Ejemplo: 20050101|2005-01-01|7|Saturday|Sábado|Samedi|1|1|1|January|Enero|Janvier|1|1|2005|1|3|2005|2
+
+dim_date: |
+  CREATE TABLE IF NOT EXISTS dw.dim_date (
+    date_key                   int PRIMARY KEY,
+    full_date_alternate_key    date NOT NULL,
+    day_number_of_week         smallint NOT NULL,
+    day_name_of_week   varchar(10) NOT NULL,
+    day_number_of_month        smallint NOT NULL,
+    day_number_of_year         smallint NOT NULL,
+    week_number_of_year        smallint NOT NULL,
+    month_name         varchar(10) NOT NULL,
+    month_number_of_year       smallint NOT NULL,
+    calendar_quarter           smallint NOT NULL,
+    calendar_year              smallint NOT NULL,
+    calendar_semester          smallint NOT NULL,
+    fiscal_quarter             smallint NOT NULL,
+    fiscal_year                smallint NOT NULL,
+    fiscal_semester            smallint NOT NULL
+  )
+
+dim_product_category: |
+  CREATE TABLE IF NOT EXISTS dw.dim_product_category (
+    product_category_key           int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_category_alternate_key int,  
+    product_category_name  varchar(50) NOT NULL
+  )
+
+dim_product_subcategory: |
+  CREATE TABLE IF NOT EXISTS dw.dim_product_subcategory (
+    product_subcategory_key           int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_subcategory_alternate_key int, 
+    product_subcategory_name  varchar(50) NOT NULL, 
+    product_category_key              int
+  )
+
+dim_product: |
+  CREATE TABLE IF NOT EXISTS dw.dim_product (
+    product_key            int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    product_alternate_key  varchar(25), 
+    product_subcategory_key int,  
+    weight_unit_measure_code char(3),  
+    size_unit_measure_code  char(3),  
+    product_name   varchar(50) NOT NULL,
+    standard_cost          numeric(19,4), 
+    finished_goods_flag    boolean NOT NULL DEFAULT false, 
+    color                  varchar(15), 
+    safety_stock_level     smallint,  
+    reorder_point          smallint,  
+    list_price             numeric(19,4),  
+    size                   varchar(50), 
+    weight                 double precision,  
+    days_to_manufacture    int, 
+    product_line           char(2), 
+    class                  char(2),
+    style                  char(2),  
+    model_name             varchar(50),
+    description            text,  
+    sell_start_date          timestamp, 
+    sell_end_date           timestamp
+  )
+
+dim_promotion: |
+  CREATE TABLE IF NOT EXISTS dw.dim_promotion (
+    promotion_key               int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    promotion_alternate_key     int,
+    promotion_name              varchar(255), 
+    discount_pct                double precision,  
+    promotion_type              varchar(50), 
+    promotion_category          varchar(50),  
+    start_date                  timestamp NOT NULL,
+    end_date                    timestamp, 
+    min_qty                     int, 
+    max_qty                     int 
+  )
+
+dim_sales_reason: |
+  CREATE TABLE IF NOT EXISTS dw.dim_sales_reason (
+    sales_reason_key             int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sales_reason_alternate_key   int NOT NULL,  
+    sales_reason_name            varchar(50) NOT NULL,  
+    sales_reason_reason_type     varchar(50) NOT NULL 
+  )
+
+dim_reseller: |
+  CREATE TABLE IF NOT EXISTS dw.dim_reseller (
+    reseller_key            int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    geography_key           int NOT NULL,  
+    reseller_alternate_key  varchar(15), 
+    phone                   varchar(25), 
+    business_type           varchar(20) NOT NULL,
+    reseller_name           varchar(50) NOT NULL, 
+    number_employees        int,  
+    address_line1           varchar(60),  
+    address_line2           varchar(60), 
+    annual_sales            numeric(19,4),
+    bank_name               varchar(50),  
+    annual_revenue          numeric(19,4), 
+    year_opened             int 
+  )
+
+dim_employee: |
+  CREATE TABLE IF NOT EXISTS dw.dim_employee (
+    employee_key                         int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_alternate_key               int,
+    sales_territory_key                  int,  
+    first_name                           varchar(50) NOT NULL,  
+    last_name                            varchar(50) NOT NULL,  
+    middle_name                          varchar(50),  
+    name_style                           boolean NOT NULL DEFAULT false,  
+    title                                varchar(50), 
+    hire_date                            date,  
+    birth_date                           date,  
+    login_id                             varchar(500),  
+    email_address                        varchar(50), 
+    phone                                varchar(25), 
+    marital_status                       char(1),  
+    salaried_flag                        boolean,  
+    gender                               char(1), 
+    pay_frequency                        smallint, 
+    base_rate                            numeric(19,4),  
+    vacation_hours                       smallint, 
+    sick_leave_hours                     smallint,  
+    current_flag                         boolean NOT NULL DEFAULT true, 
+    department_name                      varchar(50), 
+    start_date                           date, 
+    end_date                             date
+  )
+
+
+fact_internet_sales: |
+  CREATE TABLE IF NOT EXISTS dw.fact_internet_sales (
+    fact_internet_sales_key   SERIAL PRIMARY KEY,
+    sales_order_detail_id     int NOT NULL,    
+    product_key               int NOT NULL,
+    order_date_key            int NOT NULL,
+    due_date_key              int NOT NULL,
+    ship_date_key             int NOT NULL,
+    customer_key              int NOT NULL,
+    promotion_key             int NOT NULL,
+    currency_key              int NOT NULL,
+    sales_territory_key       int NOT NULL,
+    sales_order_number        varchar(20) NOT NULL,
+    revision_number           smallint NOT NULL,
+    order_quantity            smallint NOT NULL,
+    unit_price                numeric(19,4) NOT NULL,
+    extended_amount           numeric(19,4) NOT NULL,
+    unit_price_discount_pct   double precision NOT NULL DEFAULT 0,
+    discount_amount           double precision NOT NULL DEFAULT 0,
+    product_standard_cost     numeric(19,4) NOT NULL,
+    total_product_cost        numeric(19,4) NOT NULL,
+    sales_amount              numeric(19,4) NOT NULL,
+    tax_amt                   numeric(19,4) NOT NULL,
+    freight                   numeric(19,4) NOT NULL,
+    carrier_tracking_number   varchar(25),
+    order_date                timestamp,
+    due_date                  timestamp,
+    ship_date                 timestamp,
+    
+    UNIQUE (sales_order_number,sales_order_detail_id)
+  )
+
+
+fact_reseller_sales: |
+  CREATE TABLE IF NOT EXISTS dw.fact_reseller_sales (
+    fact_reseller_sales_key   SERIAL PRIMARY KEY,
+    sales_order_detail_id     int NOT NULL,
+    product_key               int NOT NULL,
+    order_date_key            int NOT NULL,
+    due_date_key              int NOT NULL,
+    ship_date_key             int NOT NULL,
+    reseller_key              int NOT NULL,
+    employee_key              int NOT NULL,
+    promotion_key             int NOT NULL,
+    currency_key              int NOT NULL,
+    sales_territory_key       int NOT NULL,
+    sales_order_number        varchar(20) NOT NULL,
+    revision_number           smallint NOT NULL,
+    order_quantity            smallint NOT NULL,
+    unit_price                numeric(19,4) NOT NULL,
+    extended_amount           numeric(19,4) NOT NULL,
+    unit_price_discount_pct   double precision NOT NULL DEFAULT 0,
+    discount_amount           double precision NOT NULL DEFAULT 0,
+    product_standard_cost     numeric(19,4) NOT NULL,
+    total_product_cost        numeric(19,4) NOT NULL,
+    sales_amount              numeric(19,4) NOT NULL,
+    tax_amt                   numeric(19,4) NOT NULL,
+    freight                   numeric(19,4) NOT NULL,
+    carrier_tracking_number   varchar(25),
+    order_date                timestamp,
+    due_date                  timestamp,
+    ship_date                 timestamp,
+    UNIQUE (sales_order_number,sales_order_detail_id)
+  )
+
+# Esta informacion viene desde script
+
+# Foreign Keys
+fk_customer_geography: |
+  ALTER TABLE dw.dim_customer
+    ADD CONSTRAINT fk_customer_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
+
+fk_employee_parent: |
+  ALTER TABLE dw.dim_employee
+    ADD CONSTRAINT fk_employee_parent FOREIGN KEY (parent_employee_key) REFERENCES dw.dim_employee(employee_key)
+
+fk_employee_salesterritory: |
+  ALTER TABLE dw.dim_employee
+    ADD CONSTRAINT fk_employee_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+fk_geography_salesterritory: |
+  ALTER TABLE dw.dim_geography
+    ADD CONSTRAINT fk_geography_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+fk_product_subcategory: |
+  ALTER TABLE dw.dim_product
+    ADD CONSTRAINT fk_product_subcategory FOREIGN KEY (product_subcategory_key) REFERENCES dw.dim_product_subcategory(product_subcategory_key)
+
+fk_productsubcat_category: |
+  ALTER TABLE dw.dim_product_subcategory
+    ADD CONSTRAINT fk_productsubcat_category FOREIGN KEY (product_category_key) REFERENCES dw.dim_product_category(product_category_key)
+
+fk_reseller_geography: |
+  ALTER TABLE dw.dim_reseller
+    ADD CONSTRAINT fk_reseller_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
+
+# Foreign Keys para Fact Internet Sales
+fk_fis_currency: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
+
+fk_fis_customer: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_customer FOREIGN KEY (customer_key) REFERENCES dw.dim_customer(customer_key)
+
+fk_fis_orderdate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_duedate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_shipdate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_product: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
+
+fk_fis_promotion: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
+
+fk_fis_salesterritory: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+
+# Foreign Keys para Fact Reseller Sales
+fk_frs_currency: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
+
+fk_frs_orderdate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_duedate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_shipdate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_employee: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_employee FOREIGN KEY (employee_key) REFERENCES dw.dim_employee(employee_key)
+
+fk_frs_product: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
+
+fk_frs_promotion: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
+
+fk_frs_reseller: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_reseller FOREIGN KEY (reseller_key) REFERENCES dw.dim_reseller(reseller_key)
+
+fk_frs_salesterritory: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+# Índices para optimización
+idx_fis_order_date: |
+  CREATE INDEX IF NOT EXISTS idx_fis_order_date ON dw.fact_internet_sales(order_date_key)
+
+idx_fis_customer: |
+  CREATE INDEX IF NOT EXISTS idx_fis_customer ON dw.fact_internet_sales(customer_key)
+
+idx_fis_product: |
+  CREATE INDEX IF NOT EXISTS idx_fis_product ON dw.fact_internet_sales(product_key)
+
+idx_fis_ship_date: |
+  CREATE INDEX IF NOT EXISTS idx_fis_ship_date ON dw.fact_internet_sales(ship_date_key)
+
+idx_fis_promotion: |
+  CREATE INDEX IF NOT EXISTS idx_fis_promotion ON dw.fact_internet_sales(promotion_key)
+
+idx_fis_currency: |
+  CREATE INDEX IF NOT EXISTS idx_fis_currency ON dw.fact_internet_sales(currency_key)
+
+idx_fisr_reason: |
+  CREATE INDEX IF NOT EXISTS idx_fisr_reason ON dw.fact_internet_sales_reason(sales_reason_key)
+
+idx_frs_order_date: |
+  CREATE INDEX IF NOT EXISTS idx_frs_order_date ON dw.fact_reseller_sales(order_date_key)
+
+idx_frs_reseller: |
+  CREATE INDEX IF NOT EXISTS idx_frs_reseller ON dw.fact_reseller_sales(reseller_key)
+
+idx_frs_product: |
+  CREATE INDEX IF NOT EXISTS idx_frs_product ON dw.fact_reseller_sales(product_key)
+
+idx_frs_ship_date: |
+  CREATE INDEX IF NOT EXISTS idx_frs_ship_date ON dw.fact_reseller_sales(ship_date_key)
+
+idx_frs_employee: |
+  CREATE INDEX IF NOT EXISTS idx_frs_employee ON dw.fact_reseller_sales(employee_key)
+
+idx_frs_promotion: |
+  CREATE INDEX IF NOT EXISTS idx_frs_promotion ON dw.fact_reseller_sales(promotion_key)
+
+idx_customer_geography: |
+  CREATE INDEX IF NOT EXISTS idx_customer_geography ON dw.dim_customer(geography_key)
+
+idx_reseller_geography: |
+  CREATE INDEX IF NOT EXISTS idx_reseller_geography ON dw.dim_reseller(geography_key)
+
+idx_product_subcategory: |
+  CREATE INDEX IF NOT EXISTS idx_product_subcategory ON dw.dim_product(product_subcategory_key)
+
+idx_subcategory_category: |
+  CREATE INDEX IF NOT EXISTS idx_subcategory_category ON dw.dim_product_subcategory(product_category_key)
