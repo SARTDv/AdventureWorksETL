@@ -172,52 +172,103 @@ def transform_dim_currency(df: pd.DataFrame) -> pd.DataFrame:
 
 def transform_dim_sales_territory(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de territorio de ventas."""
-    result = df.drop(columns=['X'], errors='ignore')
+    # Asegurar que sales_territory_key = sales_territory_alternate_key
+    result = df.drop(columns=['X'], errors='ignore').copy()
+    
+    # Si no existe sales_territory_key, crearla a partir de sales_territory_alternate_key
+    if 'sales_territory_key' not in result.columns and 'sales_territory_alternate_key' in result.columns:
+        result['sales_territory_key'] = result['sales_territory_alternate_key']
     
     expected_cols = [
-        'sales_territory_alternate_key', 'sales_territory_region',
-        'sales_territory_country', 'sales_territory_group'
+        'sales_territory_key',  # Ahora incluimos esta columna
+        'sales_territory_alternate_key', 
+        'sales_territory_region',
+        'sales_territory_country', 
+        'sales_territory_group'
     ]
-    if list(result.columns) != expected_cols:
-        raise ValueError(f"❌ Estructura incorrecta en dim_sales_territory: {result.columns}")
+    
+    # Verificar que tenemos las columnas necesarias
+    available_cols = [col for col in expected_cols if col in result.columns]
+    result = result[available_cols]
     
     print(f"✅ dim_sales_territory transformada: {len(result)} registros")
     return result
 
 
-def transform_dim_geography(df: pd.DataFrame) -> pd.DataFrame:
-    """Transforma dimensión de geografía y agrega registro Unknown."""
-    unknown_record = {
-        col: 'Unknown' if col not in ['sales_territory_key'] else None 
-        for col in df.columns
-    }
-    unknown_record.update({
-        'state_province_code': '---',
-        'country_region_code': '---'
-    })
+def transform_dim_geography(df: pd.DataFrame, dim_sales_territory: pd.DataFrame) -> pd.DataFrame:
+    """Transforma la dimensión de geografía y hace join con sales territory."""
     
+    expected_cols = [
+        "city",
+        "state_province_code", 
+        "state_province_name",
+        "country_region_code",
+        "country_region_name", 
+        "postal_code",
+        "sales_territory_key"  # Esta es la FK que usaremos para el join
+    ]
+
+    if list(df.columns) != expected_cols:
+        raise ValueError(f"Estructura incorrecta en dim_geography: {df.columns}")
+
+    # Hacer join con dim_sales_territory para obtener el sales_territory_alternate_key
+    if not dim_sales_territory.empty and 'sales_territory_key' in df.columns:
+        # Realizar el merge para validar la relación
+        original_count = len(df)
+        
+        df_merged = df.merge(
+            dim_sales_territory[['sales_territory_key']],
+            on='sales_territory_key',
+            how='left',
+            indicator=True
+        )
+        
+        # Contar registros que hicieron match
+        matched_count = (df_merged['_merge'] == 'both').sum()
+        unmatched_count = (df_merged['_merge'] == 'left_only').sum()
+        
+        logging.info(f"Geography-SalesTerritory join: {matched_count}/{original_count} registros emparejados")
+        
+        if unmatched_count > 0:
+            logging.warning(f"⚠️  {unmatched_count} registros de geography sin territorio de ventas correspondiente")
+        
+        # Eliminar la columna temporal de merge
+        df = df_merged.drop('_merge', axis=1)
+
+    # Agregar registro Unknown para geografías sin territorio
+    unknown_record = {
+        "city": "Unknown",
+        "state_province_code": "---", 
+        "state_province_name": "Unknown",
+        "country_region_code": "---",
+        "country_region_name": "Unknown", 
+        "postal_code": "Unknown",
+        "sales_territory_key": None  # Sin territorio asignado
+    }
+
     unknown_df = pd.DataFrame([unknown_record])
     result = pd.concat([df, unknown_df], ignore_index=True)
-    
-    print(f"✅ dim_geography: {len(result)} registros (incluye registro Unknown)")
+
+    print(f"✅ dim_geography transformada: {len(result)} registros (incluye Unknown)")
     return result
+
 
 
 def transform_dim_promotion(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de promoción."""
-    print(f"✅ dim_promotion: {len(df)} registros")
+    print(f"dim_promotion: {len(df)} registros")
     return df.copy()
 
 
 def transform_dim_sales_reason(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de razón de venta."""
-    print(f"✅ dim_sales_reason: {len(df)} registros")
+    print(f"dim_sales_reason: {len(df)} registros")
     return df.copy()
 
 
 def transform_dim_product_category(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de categoría de producto."""
-    print(f"✅ dim_product_category: {len(df)} registros")
+    print(f"dim_product_category: {len(df)} registros")
     return df.copy()
 
 
@@ -233,7 +284,7 @@ def transform_dim_product_subcategory(
         surrogate_key_name="product_category_key",
         validate="m:1"
     )
-    print(f"✅ dim_product_subcategory: {len(df)} registros")
+    print(f"dim_product_subcategory: {len(df)} registros")
     return df
 
 
@@ -253,7 +304,7 @@ def transform_dim_product(
         )
         df.drop(columns=['product_subcategory_alternate_key_temp'], inplace=True, errors='ignore')
     
-    print(f"✅ dim_product: {len(df)} registros")
+    print(f"dim_product: {len(df)} registros")
     return df
 
 
@@ -371,9 +422,18 @@ def transform_fact_internet_sales(
     dim_product = normalize_key(dim_product, "product_alternate_key")
     df["currency_alternate_key"] = df["currency_alternate_key"].fillna("USD")
     
-    # Crear date keys
-    for date_col, key_name in zip(DATE_COLUMNS, DATE_KEY_SUFFIXES):
-        df[key_name] = to_datekey(df[date_col])
+    # Crear date keys directamente desde las columnas OrderDate, DueDate, ShipDate
+    date_mappings = [
+        ("OrderDate", "order_date_key"),
+        ("DueDate", "due_date_key"), 
+        ("ShipDate", "ship_date_key")
+    ]
+    
+    for date_col, key_name in date_mappings:
+        if date_col in df.columns:
+            df[key_name] = to_datekey(df[date_col])
+        else:
+            logging.warning(f"⚠️  Columna {date_col} no encontrada en fact_internet_sales")
     
     # Merges con dimensiones
     merge_configs = [
@@ -388,11 +448,13 @@ def transform_fact_internet_sales(
         df = _safe_merge(df, dim, left_key=alt_key, right_alt_key=alt_key, surrogate_key_name=surr_key)
     
     # Merges con fecha
-    for temp_key, final_key in zip(DATE_KEY_SUFFIXES, DATE_KEY_SUFFIXES):
-        df = _merge_date_dimension(df, dim_date, temp_key, final_key)
+    for _, final_key in date_mappings:
+        if final_key in df.columns:
+            df = _merge_date_dimension(df, dim_date, final_key, final_key)
     
-    # Limpiar columnas originales de fecha
-    df.drop(columns=DATE_COLUMNS, inplace=True, errors='ignore')
+    # Limpiar columnas originales de fecha (si existen)
+    original_date_cols = ["OrderDate", "DueDate", "ShipDate"]
+    df.drop(columns=[col for col in original_date_cols if col in df.columns], inplace=True, errors='ignore')
     
     # Renombrar SalesOrderNumber
     if "SalesOrderNumber" not in df.columns:
@@ -433,9 +495,18 @@ def transform_fact_reseller_sales(
     dim_product = normalize_key(dim_product, "product_alternate_key")
     df["currency_alternate_key"] = df["currency_alternate_key"].fillna("USD")
     
-    # Crear date keys
-    for date_col, key_name in zip(DATE_COLUMNS, DATE_KEY_SUFFIXES):
-        df[key_name] = to_datekey(df[date_col])
+    # Crear date keys directamente desde las columnas OrderDate, DueDate, ShipDate
+    date_mappings = [
+        ("OrderDate", "order_date_key"),
+        ("DueDate", "due_date_key"), 
+        ("ShipDate", "ship_date_key")
+    ]
+    
+    for date_col, key_name in date_mappings:
+        if date_col in df.columns:
+            df[key_name] = to_datekey(df[date_col])
+        else:
+            logging.warning(f"⚠️  Columna {date_col} no encontrada en fact_reseller_sales")
     
     # Merges con dimensiones
     merge_configs = [
@@ -451,11 +522,13 @@ def transform_fact_reseller_sales(
         df = _safe_merge(df, dim, left_key=alt_key, right_alt_key=alt_key, surrogate_key_name=surr_key, validate="m:1")
     
     # Merges con fecha
-    for temp_key, final_key in zip(DATE_KEY_SUFFIXES, DATE_KEY_SUFFIXES):
-        df = _merge_date_dimension(df, dim_date, temp_key, final_key)
+    for _, final_key in date_mappings:
+        if final_key in df.columns:
+            df = _merge_date_dimension(df, dim_date, final_key, final_key)
     
-    # Limpiar columnas originales
-    df.drop(columns=DATE_COLUMNS, inplace=True, errors='ignore')
+    # Limpiar columnas originales de fecha (si existen)
+    original_date_cols = ["OrderDate", "DueDate", "ShipDate"]
+    df.drop(columns=[col for col in original_date_cols if col in df.columns], inplace=True, errors='ignore')
     
     # Renombrar SalesOrderNumber
     if "SalesOrderNumber" not in df.columns:
@@ -483,10 +556,7 @@ def transform_fact_reseller_sales(
 # ======================================================================
 
 def transform_all_data(extraction_dict: Dict, csv_data: Dict) -> Dict:
-    """
-    Transforma todos los datos extraídos.
-    Solo transforma dimensiones de NIVEL 1 (sin dependencias).
-    """
+    """Transforma todos los datos extraídos."""
     transformed = {}
     
     # Normalizar alternate keys
@@ -497,17 +567,23 @@ def transform_all_data(extraction_dict: Dict, csv_data: Dict) -> Dict:
     
     print("🔄 Transformando dimensiones de NIVEL 1 (sin dependencias)...")
     
-    # Dimensiones desde CSV
-    if 'dim_date' in csv_data and not csv_data['dim_date'].empty:
-        transformed['dim_date'] = transform_dim_date(csv_data['dim_date'])
-    
+    # Dimensiones desde CSV primero
     if 'dim_sales_territory' in csv_data and not csv_data['dim_sales_territory'].empty:
         transformed['dim_sales_territory'] = transform_dim_sales_territory(csv_data['dim_sales_territory'])
     
-    # Dimensiones desde OLTP
+    if 'dim_date' in csv_data and not csv_data['dim_date'].empty:
+        transformed['dim_date'] = transform_dim_date(csv_data['dim_date'])
+    
+    # Dimensiones desde OLTP que dependen de dim_sales_territory
+    if 'dim_geography' in extraction_dict and 'dim_sales_territory' in transformed:
+        transformed['dim_geography'] = transform_dim_geography(
+            extraction_dict['dim_geography'], 
+            transformed['dim_sales_territory']
+        )
+    
+    # Resto de dimensiones nivel 1
     level1_dims = [
         ('dim_currency', transform_dim_currency),
-        ('dim_geography', transform_dim_geography),
         ('dim_promotion', transform_dim_promotion),
         ('dim_sales_reason', transform_dim_sales_reason),
         ('dim_product_category', transform_dim_product_category),

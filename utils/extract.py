@@ -26,22 +26,29 @@ def extract_dim_currency(connection: Engine):
 
 
 def extract_dim_geography(connection: Engine):
-    df_geography = pd.read_sql_query('''
+    query = '''
         SELECT DISTINCT
-            a.City as city,
-            sp.StateProvinceCode as state_province_code,
-            sp.Name as state_province_name,
-            cr.CountryRegionCode as country_region_code,
-            cr.Name as country_region_name,
-            a.PostalCode as postal_code
+            a.City AS city,
+            sp.StateProvinceCode AS state_province_code,
+            sp.Name AS state_province_name,
+            cr.CountryRegionCode AS country_region_code,
+            cr.Name AS country_region_name,
+            a.PostalCode AS postal_code,
+            st.TerritoryID AS sales_territory_key
         FROM Person.Address a
-        INNER JOIN Person.StateProvince sp ON a.StateProvinceID = sp.StateProvinceID
-        INNER JOIN Person.CountryRegion cr ON sp.CountryRegionCode = cr.CountryRegionCode
-        WHERE a.PostalCode IS NOT NULL 
-          AND a.City IS NOT NULL
-    ''', connection)
-    
+        INNER JOIN Person.StateProvince sp 
+            ON a.StateProvinceID = sp.StateProvinceID
+        INNER JOIN Person.CountryRegion cr 
+            ON sp.CountryRegionCode = cr.CountryRegionCode
+        LEFT JOIN Sales.SalesTerritory st
+            ON st.CountryRegionCode = cr.CountryRegionCode
+        WHERE a.City IS NOT NULL
+          AND a.PostalCode IS NOT NULL
+    '''    
+    df_geography = pd.read_sql_query(query, connection)
     return df_geography
+
+
 
 
 def extract_dim_customer(connection: Engine):

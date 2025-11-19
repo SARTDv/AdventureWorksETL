@@ -353,7 +353,7 @@ def main():
         print(f"\nIntegridad referencial: {'PASÓ' if fk_integrity_ok else ' CON PROBLEMAS'}")
         
         # Validación final del DW
-        tables_ok = len(df_validation[df_validation['status'].str.contains('✅')])
+        tables_ok = len(df_validation[df_validation['status'].str.contains('OK')])
         total_tables = len(df_validation)
         
         print(f"\nEstado de tablas: {tables_ok}/{total_tables} con datos")

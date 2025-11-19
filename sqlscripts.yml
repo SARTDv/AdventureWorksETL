@@ -15,7 +15,7 @@ dim_currency: |
 # Formato: sales_territory_key|sales_territory_alternate_key|sales_territory_region|sales_territory_country|sales_territory_group|_
 dim_sales_territory: |
   CREATE TABLE IF NOT EXISTS dw.dim_sales_territory (
-    sales_territory_key            int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    sales_territory_key            int AS IDENTITY PRIMARY KEY,
     sales_territory_alternate_key  int, 
     sales_territory_region         varchar(50) NOT NULL,
     sales_territory_country        varchar(50) NOT NULL,
@@ -31,7 +31,7 @@ dim_geography: |
     country_region_code              varchar(3), 
     country_region_name              varchar(50), 
     postal_code                      varchar(15), 
-    sales_territory_key              int
+    sales_territory_key    int
   )
 
 dim_customer: |
@@ -169,7 +169,6 @@ dim_employee: |
   CREATE TABLE IF NOT EXISTS dw.dim_employee (
     employee_key                         int GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     employee_alternate_key               int,
-    sales_territory_key                  int,  
     first_name                           varchar(50) NOT NULL,  
     last_name                            varchar(50) NOT NULL,  
     middle_name                          varchar(50),  
@@ -219,9 +218,6 @@ fact_internet_sales: |
     tax_amt                   numeric(19,4) NOT NULL,
     freight                   numeric(19,4) NOT NULL,
     carrier_tracking_number   varchar(25),
-    order_date                timestamp,
-    due_date                  timestamp,
-    ship_date                 timestamp,
     
     UNIQUE (sales_order_number,sales_order_detail_id)
   )
@@ -253,9 +249,6 @@ fact_reseller_sales: |
     tax_amt                   numeric(19,4) NOT NULL,
     freight                   numeric(19,4) NOT NULL,
     carrier_tracking_number   varchar(25),
-    order_date                timestamp,
-    due_date                  timestamp,
-    ship_date                 timestamp,
     UNIQUE (sales_order_number,sales_order_detail_id)
   )
 
