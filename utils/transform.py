@@ -85,7 +85,7 @@ def _safe_merge(
     # Validar duplicados
     dim_duplicates = dim[dim[right_alt_key].duplicated(keep=False)]
     if not dim_duplicates.empty:
-        logging.warning(f"⚠️  La dimensión tiene {len(dim_duplicates)} registros duplicados en '{right_alt_key}'")
+        logging.warning(f"Cuidado  La dimensión tiene {len(dim_duplicates)} registros duplicados en '{right_alt_key}'")
     
     # Merge
     original_len = len(df)
@@ -110,9 +110,9 @@ def _safe_merge(
     
     if unmatched_count > 0:
         if unmatched_count == original_len:
-            logging.error(f"❌ CRÍTICO: Ningún registro emparejado en merge de {left_key}")
+            logging.error(f"Error CRÍTICO: Ningún registro emparejado en merge de {left_key}")
         elif unmatched_count > original_len * 0.1:
-            logging.warning(f"⚠️  Alto porcentaje sin match: {unmatched_count}/{original_len}")
+            logging.warning(f"Cuidado  Alto porcentaje sin match: {unmatched_count}/{original_len}")
     
     df_merged.drop(columns=[right_alt_key], inplace=True, errors="ignore")
     return df_merged
@@ -159,14 +159,14 @@ def transform_dim_date(df: pd.DataFrame) -> pd.DataFrame:
         'fiscal_quarter', 'fiscal_year', 'fiscal_semester'
     ]
     result = df[keep_cols].copy()
-    print(f"✅ dim_date transformada: {len(result)} registros")
+    print(f"Ok dim_date transformada: {len(result)} registros")
     return result
 
 
 def transform_dim_currency(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de moneda."""
     df["currency_alternate_key"] = df["currency_alternate_key"].fillna("USD")
-    print(f"✅ dim_currency: {len(df)} registros")
+    print(f"Ok dim_currency: {len(df)} registros")
     return df.copy()
 
 
@@ -191,7 +191,7 @@ def transform_dim_sales_territory(df: pd.DataFrame) -> pd.DataFrame:
     available_cols = [col for col in expected_cols if col in result.columns]
     result = result[available_cols]
     
-    print(f"✅ dim_sales_territory transformada: {len(result)} registros")
+    print(f"Ok dim_sales_territory transformada: {len(result)} registros")
     return result
 
 
@@ -230,7 +230,7 @@ def transform_dim_geography(df: pd.DataFrame, dim_sales_territory: pd.DataFrame)
         logging.info(f"Geography-SalesTerritory join: {matched_count}/{original_count} registros emparejados")
         
         if unmatched_count > 0:
-            logging.warning(f"⚠️  {unmatched_count} registros de geography sin territorio de ventas correspondiente")
+            logging.warning(f"Cuidado  {unmatched_count} registros de geography sin territorio de ventas correspondiente")
         
         # Eliminar la columna temporal de merge
         df = df_merged.drop('_merge', axis=1)
@@ -249,7 +249,7 @@ def transform_dim_geography(df: pd.DataFrame, dim_sales_territory: pd.DataFrame)
     unknown_df = pd.DataFrame([unknown_record])
     result = pd.concat([df, unknown_df], ignore_index=True)
 
-    print(f"✅ dim_geography transformada: {len(result)} registros (incluye Unknown)")
+    print(f"Ok dim_geography transformada: {len(result)} registros (incluye Unknown)")
     return result
 
 
@@ -344,9 +344,9 @@ def transform_dim_customer(
     # Limpiar
     df.drop(columns=['city', 'state_province_code', 'postal_code'], inplace=True, errors='ignore')
     
-    print(f"✅ dim_customer: {len(df)} registros")
-    print(f"📊 Geography matches: {matched_count} registros") 
-    print(f"❓ Geography unknown: {unknown_count} registros")
+    print(f"Ok dim_customer: {len(df)} registros")
+    print(f" Geography matches: {matched_count} registros") 
+    print(f" Geography unknown: {unknown_count} registros")
     
     return df
 
@@ -393,13 +393,13 @@ def transform_dim_reseller(
     # Limpiar
     df.drop(columns=['geo_match_key'] + geo_cols, inplace=True, errors='ignore')
     
-    print(f"✅ dim_reseller: {len(df)} registros")
+    print(f"Ok dim_reseller: {len(df)} registros")
     return df
 
 
 def transform_dim_employee(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma dimensión de empleado."""
-    print(f"✅ dim_employee: {len(df)} registros")
+    print(f"Ok dim_employee: {len(df)} registros")
     return df.copy()
 
 
@@ -433,7 +433,7 @@ def transform_fact_internet_sales(
         if date_col in df.columns:
             df[key_name] = to_datekey(df[date_col])
         else:
-            logging.warning(f"⚠️  Columna {date_col} no encontrada en fact_internet_sales")
+            logging.warning(f"Cuidado  Columna {date_col} no encontrada en fact_internet_sales")
     
     # Merges con dimensiones
     merge_configs = [
@@ -458,7 +458,7 @@ def transform_fact_internet_sales(
     
     # Renombrar SalesOrderNumber
     if "SalesOrderNumber" not in df.columns:
-        raise ValueError("❌ La columna SalesOrderNumber no está presente en fact_internet_sales.")
+        raise ValueError("Error La columna SalesOrderNumber no está presente en fact_internet_sales.")
     df.rename(columns={"SalesOrderNumber": "sales_order_number"}, inplace=True)
     
     # Forzar tipos enteros en surrogate keys
@@ -506,7 +506,7 @@ def transform_fact_reseller_sales(
         if date_col in df.columns:
             df[key_name] = to_datekey(df[date_col])
         else:
-            logging.warning(f"⚠️  Columna {date_col} no encontrada en fact_reseller_sales")
+            logging.warning(f"Cuidado  Columna {date_col} no encontrada en fact_reseller_sales")
     
     # Merges con dimensiones
     merge_configs = [
@@ -532,7 +532,7 @@ def transform_fact_reseller_sales(
     
     # Renombrar SalesOrderNumber
     if "SalesOrderNumber" not in df.columns:
-        raise ValueError("❌ La columna SalesOrderNumber no está presente.")
+        raise ValueError("Error La columna SalesOrderNumber no está presente.")
     df.rename(columns={"SalesOrderNumber": "sales_order_number"}, inplace=True)
     
     # Cálculos derivados
@@ -545,9 +545,9 @@ def transform_fact_reseller_sales(
     after_count = len(df)
     
     if before_count > after_count:
-        logging.warning(f"⚠️  Eliminados {before_count - after_count} registros con keys nulos")
+        logging.warning(f"Cuidado  Eliminados {before_count - after_count} registros con keys nulos")
     
-    logging.info(f"✅ fact_reseller_sales transformada: {len(df)} registros")
+    logging.info(f"Ok fact_reseller_sales transformada: {len(df)} registros")
     return df
 
 
@@ -565,7 +565,7 @@ def transform_all_data(extraction_dict: Dict, csv_data: Dict) -> Dict:
             if col in df.columns:
                 df[col] = df[col].astype("string")
     
-    print("🔄 Transformando dimensiones de NIVEL 1 (sin dependencias)...")
+    print("Transformando dimensiones de NIVEL 1 (sin dependencias)...")
     
     # Dimensiones desde CSV primero
     if 'dim_sales_territory' in csv_data and not csv_data['dim_sales_territory'].empty:
@@ -595,7 +595,7 @@ def transform_all_data(extraction_dict: Dict, csv_data: Dict) -> Dict:
             transformed[dim_name] = transform_func(extraction_dict[dim_name])
     
     # Dimensiones con dependencias (sin transformar)
-    print("\n📦 Preparando dimensiones con dependencias (se transformarán en carga)...")
+    print("\n Preparando dimensiones con dependencias (se transformarán en carga)...")
     
     dependent_dims = ['dim_product_subcategory', 'dim_product', 'dim_customer', 'dim_reseller']
     for dim_name in dependent_dims:
@@ -612,7 +612,7 @@ def transform_facts_with_dimensions(extraction_dict: Dict, dims_with_keys: Dict)
     """
     transformed_facts = {}
     
-    print("\n🔄 Transformando tablas de HECHOS...")
+    print("\n Transformando tablas de HECHOS...")
     
     # Normalizar todas las alternate keys
     for name, df in {**extraction_dict, **dims_with_keys}.items():
@@ -633,9 +633,9 @@ def transform_facts_with_dimensions(extraction_dict: Dict, dims_with_keys: Dict)
                 dims_with_keys['dim_sales_territory'],
                 dims_with_keys['dim_date']
             )
-            print(f"   ✅ fact_internet_sales: {len(transformed_facts['fact_internet_sales'])} registros")
+            print(f"   Ok fact_internet_sales: {len(transformed_facts['fact_internet_sales'])} registros")
         except Exception as e:
-            print(f"   ❌ Error transformando fact_internet_sales: {e}")
+            print(f"   Error transformando fact_internet_sales: {e}")
             transformed_facts['fact_internet_sales'] = pd.DataFrame()
     
     # Fact Reseller Sales
@@ -651,9 +651,9 @@ def transform_facts_with_dimensions(extraction_dict: Dict, dims_with_keys: Dict)
                 dims_with_keys['dim_sales_territory'],
                 dims_with_keys['dim_date']
             )
-            print(f"   ✅ fact_reseller_sales: {len(transformed_facts['fact_reseller_sales'])} registros")
+            print(f"   Ok fact_reseller_sales: {len(transformed_facts['fact_reseller_sales'])} registros")
         except Exception as e:
-            print(f"   ❌ Error transformando fact_reseller_sales: {e}")
+            print(f"   Error transformando fact_reseller_sales: {e}")
             transformed_facts['fact_reseller_sales'] = pd.DataFrame()
     
     return transformed_facts

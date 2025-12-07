@@ -1,0 +1,48 @@
+# Índices para optimización
+idx_fis_order_date: |
+  CREATE INDEX IF NOT EXISTS idx_fis_order_date ON dw.fact_internet_sales(order_date_key)
+
+idx_fis_customer: |
+  CREATE INDEX IF NOT EXISTS idx_fis_customer ON dw.fact_internet_sales(customer_key)
+
+idx_fis_product: |
+  CREATE INDEX IF NOT EXISTS idx_fis_product ON dw.fact_internet_sales(product_key)
+
+idx_fis_ship_date: |
+  CREATE INDEX IF NOT EXISTS idx_fis_ship_date ON dw.fact_internet_sales(ship_date_key)
+
+idx_fis_promotion: |
+  CREATE INDEX IF NOT EXISTS idx_fis_promotion ON dw.fact_internet_sales(promotion_key)
+
+idx_fis_currency: |
+  CREATE INDEX IF NOT EXISTS idx_fis_currency ON dw.fact_internet_sales(currency_key)
+
+idx_frs_order_date: |
+  CREATE INDEX IF NOT EXISTS idx_frs_order_date ON dw.fact_reseller_sales(order_date_key)
+
+idx_frs_reseller: |
+  CREATE INDEX IF NOT EXISTS idx_frs_reseller ON dw.fact_reseller_sales(reseller_key)
+
+idx_frs_product: |
+  CREATE INDEX IF NOT EXISTS idx_frs_product ON dw.fact_reseller_sales(product_key)
+
+idx_frs_ship_date: |
+  CREATE INDEX IF NOT EXISTS idx_frs_ship_date ON dw.fact_reseller_sales(ship_date_key)
+
+idx_frs_employee: |
+  CREATE INDEX IF NOT EXISTS idx_frs_employee ON dw.fact_reseller_sales(employee_key)
+
+idx_frs_promotion: |
+  CREATE INDEX IF NOT EXISTS idx_frs_promotion ON dw.fact_reseller_sales(promotion_key)
+
+idx_customer_geography: |
+  CREATE INDEX IF NOT EXISTS idx_customer_geography ON dw.dim_customer(geography_key)
+
+idx_reseller_geography: |
+  CREATE INDEX IF NOT EXISTS idx_reseller_geography ON dw.dim_reseller(geography_key)
+
+idx_product_subcategory: |
+  CREATE INDEX IF NOT EXISTS idx_product_subcategory ON dw.dim_product(product_subcategory_key)
+
+idx_subcategory_category: |
+  CREATE INDEX IF NOT EXISTS idx_subcategory_category ON dw.dim_product_subcategory(product_category_key)

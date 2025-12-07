@@ -133,50 +133,7 @@ def create_data_warehouse_schema(engine: Engine):
             'dim_employee',
             # Hechos
             'fact_internet_sales',
-            'fact_reseller_sales',
-            # Foreign Keys
-            'fk_customer_geography',
-            'fk_employee_salesterritory',
-            'fk_geography_salesterritory',
-            'fk_product_subcategory',
-            'fk_productsubcat_category',
-            'fk_reseller_geography',
-            # FKs para Internet Sales
-            'fk_fis_currency',
-            'fk_fis_customer', 
-            'fk_fis_orderdate',
-            'fk_fis_duedate',
-            'fk_fis_shipdate',
-            'fk_fis_product',
-            'fk_fis_promotion',
-            'fk_fis_salesterritory',
-            # FKs para Reseller Sales
-            'fk_frs_currency',
-            'fk_frs_orderdate',
-            'fk_frs_duedate', 
-            'fk_frs_shipdate',
-            'fk_frs_employee',
-            'fk_frs_product',
-            'fk_frs_promotion',
-            'fk_frs_reseller',
-            'fk_frs_salesterritory',
-            # Índices
-            'idx_fis_order_date',
-            'idx_fis_customer',
-            'idx_fis_product',
-            'idx_fis_ship_date', 
-            'idx_fis_promotion',
-            'idx_fis_currency',
-            'idx_frs_order_date',
-            'idx_frs_reseller',
-            'idx_frs_product',
-            'idx_frs_ship_date',
-            'idx_frs_employee',
-            'idx_frs_promotion',
-            'idx_customer_geography',
-            'idx_reseller_geography',
-            'idx_product_subcategory',
-            'idx_subcategory_category'
+            'fact_reseller_sales'
         ]
         
         for script_key in execution_order:
@@ -189,13 +146,90 @@ def create_data_warehouse_schema(engine: Engine):
                     print(f"Advertencia en {script_key}: {e}")
                     conn.rollback()
 
+        print("\nNota: Foreign keys se agregan despues de cargar los datos")
+
+def add_foreign_keys_after_load(engine: Engine):
+    """Ejecutar DESPUÉS de cargar todos los datos"""
+    print("\nFase 4: Agregando foreign keys e índices")
+    
+    with open('foreignKeys.yml', 'r', encoding='utf-8') as f:
+        fk_scripts = yaml.safe_load(f)
+    
+    with engine.connect() as conn:
+        # Quita la verificacion por la cantidad de los datos
+        conn.execute(text("SET CONSTRAINTS ALL DEFERRED"))
+        
+        fk_order = [
+            # FKs para dimensiones (dependencias simples)
+            'fk_geography_salesterritory',
+            'fk_productsubcat_category',
+            'fk_product_subcategory',
+            'fk_customer_geography',
+            'fk_reseller_geography',
+            
+            # FKs para fact_internet_sales
+            'fk_fis_currency',
+            'fk_fis_customer',
+            'fk_fis_orderdate',
+            'fk_fis_duedate',
+            'fk_fis_shipdate',
+            'fk_fis_product',
+            'fk_fis_promotion',
+            'fk_fis_salesterritory',
+            
+            # FKs para fact_reseller_sales
+            'fk_frs_currency',
+            'fk_frs_orderdate',
+            'fk_frs_duedate',
+            'fk_frs_shipdate',
+            'fk_frs_employee',
+            'fk_frs_product',
+            'fk_frs_promotion',
+            'fk_frs_reseller',
+            'fk_frs_salesterritory'
+        ]
+        
+        fk_added = 0
+        fk_failed = 0
+        
+        for script_key in fk_order:
+            if script_key in fk_scripts:
+                try:
+                    print(f"  Agregando: {script_key}")
+                    conn.execute(text(fk_scripts[script_key]))
+                    conn.commit()
+                    fk_added += 1
+                except Exception as e:
+                    print(f"  Error agregando {script_key}: {e}")
+                    conn.rollback()
+                    fk_failed += 1
+        
+        print(f"Terminado Foreign keys: {fk_added} agregadas, {fk_failed} fallidas")
+    
+    # Indices para velocidad
+    with open('indexes.yml', 'r', encoding='utf-8') as f:
+        idx_scripts = yaml.safe_load(f)
+    
+    with engine.connect() as conn:
+        idx_created = 0
+        for idx_key, idx_sql in idx_scripts.items():
+            try:
+                print(f"  Creando índice: {idx_key}")
+                conn.execute(text(idx_sql))
+                conn.commit()
+                idx_created += 1
+            except Exception as e:
+                print(f"  Error creando índice {idx_key}: {e}")
+                conn.rollback()
+        
+        print(f"Terminado Indices creados: {idx_created}")
 
 def main():
     print("=" * 70)
-    print("🚀 PIPELINE ETL ADVENTUREWORKSDW 2022")
+    print("PIPELINE ETL ADVENTUREWORKSDW 2022")
     print("=" * 70)
     
-    print("\nCargando configuración para contenedores docker")
+    print("\nCargando configuracion para contenedores docker")
     
     with open('config.yml', 'r') as f:
         config = yaml.safe_load(f)
@@ -217,7 +251,7 @@ def main():
 
 
     print("\n" + "=" * 70)
-    print("PRUEBAS DE CONEXIÓN A BASES DE DATOS")
+    print("PRUEBAS DE CONEXION A BASES DE DATOS")
     print("=" * 70)
     
     # Probar conexión a SQL Server
@@ -230,12 +264,12 @@ def main():
     test_database_performance(oltp_engine, dw_engine)
     
     if not sql_server_ok or not postgres_ok:
-        print(f"\nOKnt -  CONEXIONES FALLIDAS:")
+        print(f"\nError -  CONEXIONES FALLIDAS:")
         if not sql_server_ok:
             print("   - SQL Server: No se pudo conectar")
         if not postgres_ok:
             print("   - PostgreSQL: No se pudo conectar")
-        print("Revise la configuración en config.yml y asegúrese de que los servicios estén ejecutándose")
+        print("Revise la configuración en config.yml y asegúrese de que los servicios esten ejecutandose")
         return
     
     print("\nOK - Todas las conexiones verificadas exitosamente")
@@ -244,7 +278,7 @@ def main():
     existing_tables = inspector.get_table_names(schema='dw')
 
     if not existing_tables:
-        print("\n Data Warehouse vacío. Creando esquema")
+        print("\n Data Warehouse vacio. Creando esquema")
         create_data_warehouse_schema(dw_engine)
         print("Esquema DW creado exitosamente")
     else:
@@ -320,6 +354,10 @@ def main():
         print("\n" + "=" * 70)
         print("FASE 4: VALIDACIÓN POST-CARGA")
         print("=" * 70)
+
+        # Agrega las llaves foraneas cuando los datos esten cargados
+        add_foreign_keys_after_load(dw_engine)
+
         
         # Validar estructura del DW
         print("\nValidando estructura del Data Warehouse")
@@ -361,7 +399,7 @@ def main():
         # Verificar éxito completo
         if summary['total_fact_records'] > 0 and fk_integrity_ok and tables_ok == total_tables:
             print("\n" + "=" * 70)
-            print("MELO - PROCESO ETL COMPLETADO EXITOSAMENTE")
+            print("OK - PROCESO ETL COMPLETADO EXITOSAMENTE")
             print("=" * 70)
         elif summary['total_fact_records'] > 0:
             print("\n" + "=" * 70)
@@ -369,7 +407,7 @@ def main():
             print("=" * 70)
         else:
             print("\n" + "=" * 70)
-            print("OKn't  PROCESO ETL COMPLETADO PERO SIN REGISTROS EN HECHOS")
+            print("ERROR  PROCESO ETL COMPLETADO PERO SIN REGISTROS EN HECHOS")
             print("=" * 70)
 
     except Exception as e:

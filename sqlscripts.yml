@@ -15,7 +15,7 @@ dim_currency: |
 # Formato: sales_territory_key|sales_territory_alternate_key|sales_territory_region|sales_territory_country|sales_territory_group|_
 dim_sales_territory: |
   CREATE TABLE IF NOT EXISTS dw.dim_sales_territory (
-    sales_territory_key            int AS IDENTITY PRIMARY KEY,
+    sales_territory_key            int PRIMARY KEY,
     sales_territory_alternate_key  int, 
     sales_territory_region         varchar(50) NOT NULL,
     sales_territory_country        varchar(50) NOT NULL,
@@ -31,7 +31,7 @@ dim_geography: |
     country_region_code              varchar(3), 
     country_region_name              varchar(50), 
     postal_code                      varchar(15), 
-    sales_territory_key    int
+    sales_territory_key              int
   )
 
 dim_customer: |
@@ -49,7 +49,7 @@ dim_customer: |
     suffix                     varchar(10),
     gender                     varchar(1), 
     email_address              varchar(50),  
-    yearly_income              numeric(19,4),  
+    yearly_income              varchar(25),  
     total_children             smallint,  
     number_children_at_home    smallint,  
     education                  varchar(40),  
@@ -252,156 +252,3 @@ fact_reseller_sales: |
     UNIQUE (sales_order_number,sales_order_detail_id)
   )
 
-# Esta informacion viene desde script
-
-# Foreign Keys
-fk_customer_geography: |
-  ALTER TABLE dw.dim_customer
-    ADD CONSTRAINT fk_customer_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
-
-fk_employee_parent: |
-  ALTER TABLE dw.dim_employee
-    ADD CONSTRAINT fk_employee_parent FOREIGN KEY (parent_employee_key) REFERENCES dw.dim_employee(employee_key)
-
-fk_employee_salesterritory: |
-  ALTER TABLE dw.dim_employee
-    ADD CONSTRAINT fk_employee_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
-
-fk_geography_salesterritory: |
-  ALTER TABLE dw.dim_geography
-    ADD CONSTRAINT fk_geography_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
-
-fk_product_subcategory: |
-  ALTER TABLE dw.dim_product
-    ADD CONSTRAINT fk_product_subcategory FOREIGN KEY (product_subcategory_key) REFERENCES dw.dim_product_subcategory(product_subcategory_key)
-
-fk_productsubcat_category: |
-  ALTER TABLE dw.dim_product_subcategory
-    ADD CONSTRAINT fk_productsubcat_category FOREIGN KEY (product_category_key) REFERENCES dw.dim_product_category(product_category_key)
-
-fk_reseller_geography: |
-  ALTER TABLE dw.dim_reseller
-    ADD CONSTRAINT fk_reseller_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
-
-# Foreign Keys para Fact Internet Sales
-fk_fis_currency: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
-
-fk_fis_customer: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_customer FOREIGN KEY (customer_key) REFERENCES dw.dim_customer(customer_key)
-
-fk_fis_orderdate: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_fis_duedate: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_fis_shipdate: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_fis_product: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
-
-fk_fis_promotion: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
-
-fk_fis_salesterritory: |
-  ALTER TABLE dw.fact_internet_sales
-    ADD CONSTRAINT fk_fis_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
-
-
-# Foreign Keys para Fact Reseller Sales
-fk_frs_currency: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
-
-fk_frs_orderdate: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_frs_duedate: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_frs_shipdate: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
-
-fk_frs_employee: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_employee FOREIGN KEY (employee_key) REFERENCES dw.dim_employee(employee_key)
-
-fk_frs_product: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
-
-fk_frs_promotion: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
-
-fk_frs_reseller: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_reseller FOREIGN KEY (reseller_key) REFERENCES dw.dim_reseller(reseller_key)
-
-fk_frs_salesterritory: |
-  ALTER TABLE dw.fact_reseller_sales
-    ADD CONSTRAINT fk_frs_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
-
-# Índices para optimización
-idx_fis_order_date: |
-  CREATE INDEX IF NOT EXISTS idx_fis_order_date ON dw.fact_internet_sales(order_date_key)
-
-idx_fis_customer: |
-  CREATE INDEX IF NOT EXISTS idx_fis_customer ON dw.fact_internet_sales(customer_key)
-
-idx_fis_product: |
-  CREATE INDEX IF NOT EXISTS idx_fis_product ON dw.fact_internet_sales(product_key)
-
-idx_fis_ship_date: |
-  CREATE INDEX IF NOT EXISTS idx_fis_ship_date ON dw.fact_internet_sales(ship_date_key)
-
-idx_fis_promotion: |
-  CREATE INDEX IF NOT EXISTS idx_fis_promotion ON dw.fact_internet_sales(promotion_key)
-
-idx_fis_currency: |
-  CREATE INDEX IF NOT EXISTS idx_fis_currency ON dw.fact_internet_sales(currency_key)
-
-idx_fisr_reason: |
-  CREATE INDEX IF NOT EXISTS idx_fisr_reason ON dw.fact_internet_sales_reason(sales_reason_key)
-
-idx_frs_order_date: |
-  CREATE INDEX IF NOT EXISTS idx_frs_order_date ON dw.fact_reseller_sales(order_date_key)
-
-idx_frs_reseller: |
-  CREATE INDEX IF NOT EXISTS idx_frs_reseller ON dw.fact_reseller_sales(reseller_key)
-
-idx_frs_product: |
-  CREATE INDEX IF NOT EXISTS idx_frs_product ON dw.fact_reseller_sales(product_key)
-
-idx_frs_ship_date: |
-  CREATE INDEX IF NOT EXISTS idx_frs_ship_date ON dw.fact_reseller_sales(ship_date_key)
-
-idx_frs_employee: |
-  CREATE INDEX IF NOT EXISTS idx_frs_employee ON dw.fact_reseller_sales(employee_key)
-
-idx_frs_promotion: |
-  CREATE INDEX IF NOT EXISTS idx_frs_promotion ON dw.fact_reseller_sales(promotion_key)
-
-idx_customer_geography: |
-  CREATE INDEX IF NOT EXISTS idx_customer_geography ON dw.dim_customer(geography_key)
-
-idx_reseller_geography: |
-  CREATE INDEX IF NOT EXISTS idx_reseller_geography ON dw.dim_reseller(geography_key)
-
-idx_product_subcategory: |
-  CREATE INDEX IF NOT EXISTS idx_product_subcategory ON dw.dim_product(product_subcategory_key)
-
-idx_subcategory_category: |
-  CREATE INDEX IF NOT EXISTS idx_subcategory_category ON dw.dim_product_subcategory(product_category_key)

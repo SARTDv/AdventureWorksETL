@@ -1,17 +1,17 @@
 ADVENTUREWORKS_OLTP:
   drivername: "mssql+pyodbc"
-  user: "sa"
-  password: "Rupestre.38"
+  user: ""
+  password: ""
   host: "localhost"
   port: "1433"
-  dbname: "AdventureWorks2022"
+  dbname: ""
   driver: "ODBC Driver 17 for SQL Server"
   query: "?driver=ODBC+Driver+17+for+SQL+Server&TrustServerCertificate=yes"
 
 ADVENTUREWORKS_DW:
   drivername: "postgresql"
-  user: "postgres"
-  password: "postgres"
+  user: ""
+  password: ""
   host: "localhost"
   port: "5432"
   dbname: "datawarehouse" 

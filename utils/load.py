@@ -84,7 +84,7 @@ def _truncate_table(table_name: str, engine: Engine, schema: str = 'dw'):
         with engine.connect() as conn:
             conn.execute(text(f"TRUNCATE TABLE {schema}.{table_name} CASCADE"))
             conn.commit()
-        logging.info(f"🗑️  {table_name} truncada")
+        logging.info(f" {table_name} truncada")
     except Exception as e:
         logging.warning(f"No se pudo truncar {table_name}: {str(e)}")
 

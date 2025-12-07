@@ -79,4 +79,6 @@ Thumbs.db
 # Logs
 *.log
 
+# Database
+config.yml
 

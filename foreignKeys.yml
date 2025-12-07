@@ -1,0 +1,92 @@
+
+# Foreign Keys
+fk_customer_geography: |
+  ALTER TABLE dw.dim_customer
+    ADD CONSTRAINT fk_customer_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
+
+fk_geography_salesterritory: |
+  ALTER TABLE dw.dim_geography
+    ADD CONSTRAINT fk_geography_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+fk_product_subcategory: |
+  ALTER TABLE dw.dim_product
+    ADD CONSTRAINT fk_product_subcategory FOREIGN KEY (product_subcategory_key) REFERENCES dw.dim_product_subcategory(product_subcategory_key)
+
+fk_productsubcat_category: |
+  ALTER TABLE dw.dim_product_subcategory
+    ADD CONSTRAINT fk_productsubcat_category FOREIGN KEY (product_category_key) REFERENCES dw.dim_product_category(product_category_key)
+
+fk_reseller_geography: |
+  ALTER TABLE dw.dim_reseller
+    ADD CONSTRAINT fk_reseller_geography FOREIGN KEY (geography_key) REFERENCES dw.dim_geography(geography_key)
+
+# Foreign Keys para Fact Internet Sales
+fk_fis_currency: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
+
+fk_fis_customer: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_customer FOREIGN KEY (customer_key) REFERENCES dw.dim_customer(customer_key)
+
+fk_fis_orderdate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_duedate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_shipdate: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_fis_product: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
+
+fk_fis_promotion: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
+
+fk_fis_salesterritory: |
+  ALTER TABLE dw.fact_internet_sales
+    ADD CONSTRAINT fk_fis_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)
+
+
+# Foreign Keys para Fact Reseller Sales
+fk_frs_currency: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_currency FOREIGN KEY (currency_key) REFERENCES dw.dim_currency(currency_key)
+
+fk_frs_orderdate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_orderdate FOREIGN KEY (order_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_duedate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_duedate FOREIGN KEY (due_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_shipdate: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_shipdate FOREIGN KEY (ship_date_key) REFERENCES dw.dim_date(date_key)
+
+fk_frs_employee: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_employee FOREIGN KEY (employee_key) REFERENCES dw.dim_employee(employee_key)
+
+fk_frs_product: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_product FOREIGN KEY (product_key) REFERENCES dw.dim_product(product_key)
+
+fk_frs_promotion: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_promotion FOREIGN KEY (promotion_key) REFERENCES dw.dim_promotion(promotion_key)
+
+fk_frs_reseller: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_reseller FOREIGN KEY (reseller_key) REFERENCES dw.dim_reseller(reseller_key)
+
+fk_frs_salesterritory: |
+  ALTER TABLE dw.fact_reseller_sales
+    ADD CONSTRAINT fk_frs_salesterritory FOREIGN KEY (sales_territory_key) REFERENCES dw.dim_sales_territory(sales_territory_key)

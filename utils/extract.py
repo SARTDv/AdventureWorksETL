@@ -20,7 +20,7 @@ def extract_dim_currency(connection: Engine):
         SELECT 
             CurrencyCode as currency_alternate_key,
             Name as currency_name
-        FROM Sales.Currency
+        FROM Sales.Currency;
     ''', connection)
     return df_currency
 
@@ -43,7 +43,7 @@ def extract_dim_geography(connection: Engine):
         LEFT JOIN Sales.SalesTerritory st
             ON st.CountryRegionCode = cr.CountryRegionCode
         WHERE a.City IS NOT NULL
-          AND a.PostalCode IS NOT NULL
+          AND a.PostalCode IS NOT NULL;
     '''    
     df_geography = pd.read_sql_query(query, connection)
     return df_geography
@@ -91,18 +91,29 @@ def extract_dim_customer(connection: Engine):
             ca.City as city,
             ca.StateProvinceCode as state_province_code,
             ca.PostalCode as postal_code,
-            -- Campos por defecto
-            CAST(NULL as date) as birth_date,
-            'U' as marital_status,
-            'U' as gender,
-            CAST(NULL as numeric(19,4)) as yearly_income,
-            CAST(0 as smallint) as total_children,
-            CAST(0 as smallint) as number_children_at_home,
-            'Unknown' as education,
-            'N' as house_owner_flag,
-            CAST(0 as smallint) as number_cars_owned,
-            CAST(NULL as date) as date_first_purchase,
-            '0-1 Miles' as commute_distance
+            -- Campos de XML
+            Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:BirthDate)[1]', 'date') as birth_date,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:MaritalStatus)[1]', 'nvarchar(1)') as marital_status,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:Gender)[1]', 'nvarchar(1)') as gender,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:YearlyIncome)[1]', 'nvarchar(20)') as yearly_income,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:TotalChildren)[1]', 'smallint') as total_children,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:NumberChildrenAtHome)[1]', 'smallint') as number_children_at_home,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:Education)[1]', 'nvarchar(50)') as education,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:HomeOwnerFlag)[1]', 'nvarchar(1)') as house_owner_flag,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:NumberCarsOwned)[1]', 'smallint') as number_cars_owned,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:DateFirstPurchase)[1]', 'date') as date_first_purchase,
+    Demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/IndividualSurvey";
+        (/ns:IndividualSurvey/ns:CommuteDistance)[1]', 'nvarchar(20)') as commute_distance
         FROM Sales.Customer c
         INNER JOIN Person.Person p ON c.PersonID = p.BusinessEntityID
         LEFT JOIN CustomerContacts cc ON p.BusinessEntityID = cc.BusinessEntityID
@@ -117,7 +128,7 @@ def extract_dim_product_category(connection: Engine):
         SELECT 
             ProductCategoryID as product_category_alternate_key,
             Name as product_category_name
-        FROM Production.ProductCategory
+        FROM Production.ProductCategory;
     ''', connection)
     return df_category
 
@@ -128,12 +139,12 @@ def extract_dim_product_subcategory(connection: Engine):
             ProductSubcategoryID as product_subcategory_alternate_key,
             Name as product_subcategory_name,
             ProductCategoryID as product_category_alternate_key
-        FROM Production.ProductSubcategory
+        FROM Production.ProductSubcategory;
     ''', connection)
     return df_subcategory
 
 
-def extract_dim_product(connection: Engine):  # aqui esta mal, revisar query (asquerosa IA)
+def extract_dim_product(connection: Engine): 
     df_product = pd.read_sql_query('''
         SELECT 
             p.ProductID as product_alternate_key,
@@ -159,7 +170,7 @@ def extract_dim_product(connection: Engine):  # aqui esta mal, revisar query (as
             p.SizeUnitMeasureCode as size_unit_measure_code
         FROM Production.Product p
         LEFT JOIN Production.ProductModel pm ON p.ProductModelID = pm.ProductModelID
-        -- Descripción en inglés (prioridad)
+        -- Descripción en ingles
         OUTER APPLY (
             SELECT TOP 1 pd.Description
             FROM Production.ProductModelProductDescriptionCulture pmpdc
@@ -167,7 +178,7 @@ def extract_dim_product(connection: Engine):  # aqui esta mal, revisar query (as
             WHERE pmpdc.ProductModelID = pm.ProductModelID 
                 AND pmpdc.CultureID = 'en'
         ) pd_en
-        -- Cualquier otra descripción (si no hay en inglés)
+        -- Cualquier otra descripción
         OUTER APPLY (
             SELECT TOP 1 pd.Description
             FROM Production.ProductModelProductDescriptionCulture pmpdc
@@ -176,7 +187,7 @@ def extract_dim_product(connection: Engine):  # aqui esta mal, revisar query (as
                 AND NOT EXISTS (SELECT 1 FROM Production.ProductModelProductDescriptionCulture 
                             WHERE ProductModelID = pm.ProductModelID AND CultureID = 'en')
         ) pd_any
-        WHERE p.ProductID IS NOT NULL
+        WHERE p.ProductID IS NOT NULL;
     ''', connection)
     return df_product
 
@@ -193,7 +204,7 @@ def extract_dim_promotion(connection: Engine):
             EndDate as end_date,
             MinQty as min_qty,
             MaxQty as max_qty
-        FROM Sales.SpecialOffer
+        FROM Sales.SpecialOffer;
     ''', connection)
     return df_promotion
 
@@ -204,7 +215,7 @@ def extract_dim_sales_reason(connection: Engine):
             SalesReasonID as sales_reason_alternate_key,
             Name as sales_reason_name,
             ReasonType as sales_reason_reason_type
-        FROM Sales.SalesReason
+        FROM Sales.SalesReason;
     ''', connection)
     return df_reason
 
@@ -212,28 +223,58 @@ def extract_dim_sales_reason(connection: Engine):
 def extract_dim_reseller(connection: Engine):
     df_reseller = pd.read_sql_query('''
         SELECT 
-            s.BusinessEntityID as reseller_alternate_key,
-            s.Name as reseller_name,
-            pp.PhoneNumber as phone,
-            a.AddressLine1 as address_line1,
-            a.AddressLine2 as address_line2,
+            s.BusinessEntityID AS reseller_alternate_key,
+            s.Name AS reseller_name,
+            vw.PhoneNumber AS phone,
+            a.AddressLine1 AS address_line1,
+            a.AddressLine2 AS address_line2,
+
             -- Campos para join con dim_geography
-            a.City as city,
-            sp.StateProvinceCode as state_province_code,
-            a.PostalCode as postal_code,
-            -- Campos de XML (valores por defecto)
-            'Value Added Reseller' as business_type,
-            CAST(NULL as int) as number_employees,
-            CAST(NULL as numeric(19,4)) as annual_sales,
-            CAST(NULL as varchar(50)) as bank_name,
-            CAST(NULL as numeric(19,4)) as annual_revenue,
-            CAST(NULL as int) as year_opened
+            a.City AS city,
+            sp.StateProvinceCode AS state_province_code,
+            a.PostalCode AS postal_code,
+
+            -- Campos de XML (Ya tienen los valores)
+            COALESCE(
+                CASE s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                    (/ns:StoreSurvey/ns:BusinessType)[1]', 'nvarchar(10)')
+                    WHEN 'BM' THEN 'Bike Manufacturer'
+                    WHEN 'BS' THEN 'Bike Shop'
+                    WHEN 'OS' THEN 'Online Store'
+                    WHEN 'WS' THEN 'Warehouse Store'
+                    WHEN 'VARS' THEN 'Value Added Reseller'
+                    ELSE s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                        (/ns:StoreSurvey/ns:BusinessType)[1]', 'nvarchar(50)')
+                END,
+                'Value Added Reseller'
+            ) AS business_type,
+
+            -- Extraer otros campos del XML
+            s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                (/ns:StoreSurvey/ns:NumberEmployees)[1]', 'int') AS number_employees,
+
+            s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                (/ns:StoreSurvey/ns:AnnualSales)[1]', 'numeric(19,4)') AS annual_sales,
+
+            s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                (/ns:StoreSurvey/ns:BankName)[1]', 'varchar(50)') AS bank_name,
+
+            s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                (/ns:StoreSurvey/ns:AnnualRevenue)[1]', 'numeric(19,4)') AS annual_revenue,
+
+            s.demographics.value('declare namespace ns="http://schemas.microsoft.com/sqlserver/2004/07/adventure-works/StoreSurvey";
+                (/ns:StoreSurvey/ns:YearOpened)[1]', 'int') AS year_opened
+
         FROM Sales.Store s
-        LEFT JOIN Person.BusinessEntityAddress bea ON s.BusinessEntityID = bea.BusinessEntityID
-        LEFT JOIN Person.Address a ON bea.AddressID = a.AddressID
-        LEFT JOIN Person.StateProvince sp ON a.StateProvinceID = sp.StateProvinceID
-        LEFT JOIN Person.PersonPhone pp ON s.BusinessEntityID = pp.BusinessEntityID
-        WHERE s.BusinessEntityID IS NOT NULL
+        LEFT JOIN Person.BusinessEntityAddress bea 
+            ON s.BusinessEntityID = bea.BusinessEntityID
+        LEFT JOIN Person.Address a 
+            ON bea.AddressID = a.AddressID
+        LEFT JOIN Person.StateProvince sp 
+            ON a.StateProvinceID = sp.StateProvinceID
+        LEFT JOIN Sales.vStoreWithContacts vw 
+            ON s.BusinessEntityID = vw.BusinessEntityID
+        WHERE s.BusinessEntityID IS NOT NULL;
     ''', connection)
     return df_reseller
 
@@ -291,7 +332,7 @@ def extract_dim_employee(connection: Engine):
         LEFT JOIN CurrentDepartment cd ON e.BusinessEntityID = cd.BusinessEntityID
         LEFT JOIN HumanResources.Department d ON cd.DepartmentID = d.DepartmentID
         LEFT JOIN LatestPayRate lpr ON e.BusinessEntityID = lpr.BusinessEntityID
-        WHERE e.BusinessEntityID IS NOT NULL
+        WHERE e.BusinessEntityID IS NOT NULL;
     ''', connection)
     return df_employee
 
@@ -322,7 +363,7 @@ def extract_fact_internet_sales(connection: Engine):
         INNER JOIN Sales.SalesOrderDetail sod ON soh.SalesOrderID = sod.SalesOrderID
         INNER JOIN Production.Product p ON sod.ProductID = p.ProductID
         LEFT JOIN Sales.CurrencyRate cr ON soh.CurrencyRateID = cr.CurrencyRateID
-        WHERE soh.OnlineOrderFlag = 1
+        WHERE soh.OnlineOrderFlag = 1;
     ''', connection)
     return df_internet_sales
 
@@ -357,7 +398,7 @@ def extract_fact_reseller_sales(connection: Engine):
         INNER JOIN Sales.Customer c ON soh.CustomerID = c.CustomerID
         INNER JOIN Sales.Store s ON c.StoreID = s.BusinessEntityID
         LEFT JOIN Sales.CurrencyRate cr ON soh.CurrencyRateID = cr.CurrencyRateID
-        WHERE soh.OnlineOrderFlag = 0
+        WHERE soh.OnlineOrderFlag = 0;
     ''', connection)
     return df_reseller_sales
 
@@ -380,14 +421,14 @@ def extract_for_data_warehouse(connection: Engine):
     
     extraction_dict = {}
     
-    print("🚀 Iniciando extracción...")
+    print("=== Iniciando extracción...")
     for table_name, extract_func in extraction_functions.items():
         try:
             df = extract_func(connection)
             extraction_dict[table_name] = df
-            print(f"✅ {table_name}: {len(df)} registros")
+            print(f"Ok {table_name}: {len(df)} registros")
         except Exception as e:
-            print(f"❌ Error extrayendo {table_name}: {e}")
+            print(f"Mal Error extrayendo {table_name}: {e}")
             extraction_dict[table_name] = pd.DataFrame()
     
     return extraction_dict
@@ -428,7 +469,7 @@ def load_dimensions_from_csv(csv_folder: str):
 
         
         csv_data['dim_date'] = dim_date
-        print(f"✅ DimDate: {len(dim_date)} registros cargados")
+        print(f"Ok DimDate: {len(dim_date)} registros cargados")
 
     except Exception as e:
         csv_data['dim_date'] = pd.DataFrame()
@@ -451,11 +492,10 @@ def load_dimensions_from_csv(csv_folder: str):
         ] 
 
         csv_data['dim_sales_territory'] = dim_sales_territory
-        print(f"✅ DimSalesTerritory: {len(dim_sales_territory)} registros cargados")
+        print(f"Ok DimSalesTerritory: {len(dim_sales_territory)} registros cargados")
 
     except Exception as e:
         print(f"Error cargando DimSalesTerritory: {e}")
         csv_data['dim_sales_territory'] = pd.DataFrame()
 
     return csv_data
-
