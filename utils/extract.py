@@ -14,7 +14,7 @@ def extract(tables: list, connection: Engine) -> list:
         dataframes.append(df)
     return dataframes
 
-
+# Estrae la dimension currency cmabiando el nombre de las columnas 
 def extract_dim_currency(connection: Engine):
     df_currency = pd.read_sql_query('''
         SELECT 
@@ -24,7 +24,9 @@ def extract_dim_currency(connection: Engine):
     ''', connection)
     return df_currency
 
-
+# Extrae la dimensión geography renombrando las columnas
+# LEFT JOIN con SalesTerritory para incluir geografías que no tengan 
+# un territorio de ventas asignado (sales_territory_key será NULL en esos casos)
 def extract_dim_geography(connection: Engine):
     query = '''
         SELECT DISTINCT
@@ -50,7 +52,10 @@ def extract_dim_geography(connection: Engine):
 
 
 
-
+# extraer la dimension customer 
+# se hacen dos consultas con CTEs para obtener los datos de contacto y la direccion
+# se usa max por que solo queremos un email y direccion por cliente
+# se obtiene varias lineas desde xml usando .value()
 def extract_dim_customer(connection: Engine):
     df_customer = pd.read_sql_query('''
         WITH CustomerContacts AS (
@@ -122,7 +127,7 @@ def extract_dim_customer(connection: Engine):
     ''', connection)
     return df_customer
 
-
+# se estrae la dimension product category cambiando el nombre de las columnas para que coincidan con el nombre de la dimension
 def extract_dim_product_category(connection: Engine):
     df_category = pd.read_sql_query('''
         SELECT 
@@ -132,7 +137,7 @@ def extract_dim_product_category(connection: Engine):
     ''', connection)
     return df_category
 
-
+# se estrae la dimension product subcategory cambiando el nombre de las columnas para que coincidan con el nombre de la dimension
 def extract_dim_product_subcategory(connection: Engine):
     df_subcategory = pd.read_sql_query('''
         SELECT 
@@ -144,6 +149,10 @@ def extract_dim_product_subcategory(connection: Engine):
     return df_subcategory
 
 
+# Extrae la dimension producto aplicando logica de negocio compleja
+# - Normaliza descripciones en ingles o fallback a cualquier otro idioma usando OUTER APPLY
+# - Aplana la jerarquia de modelos (ProductModel)
+# - Castea tipos de datos especificos
 def extract_dim_product(connection: Engine): 
     df_product = pd.read_sql_query('''
         SELECT 
@@ -191,7 +200,7 @@ def extract_dim_product(connection: Engine):
     ''', connection)
     return df_product
 
-
+# extrae la dimension promotion cambiando el nombre de las columnas para que coincidan con el nombre de la dimension
 def extract_dim_promotion(connection: Engine):
     df_promotion = pd.read_sql_query('''
         SELECT 
@@ -208,7 +217,7 @@ def extract_dim_promotion(connection: Engine):
     ''', connection)
     return df_promotion
 
-
+# extrae la dimension sales reason cambiando el nombre de las columnas para que coincidan con el nombre de la dimension
 def extract_dim_sales_reason(connection: Engine):
     df_reason = pd.read_sql_query('''
         SELECT 
@@ -220,6 +229,10 @@ def extract_dim_sales_reason(connection: Engine):
     return df_reason
 
 
+# Extrae la dimension reseller aplanando datos XML
+# - Extrae datos demograficos desde columnas XML (Demographics)
+# - Consolida informacion de contacto desde vStoreWithContacts
+# - Obtiene datos geograficos para posterior enlace
 def extract_dim_reseller(connection: Engine):
     df_reseller = pd.read_sql_query('''
         SELECT 
@@ -279,6 +292,10 @@ def extract_dim_reseller(connection: Engine):
     return df_reseller
 
 
+# Extrae la dimension empleado reconstruyendo historial
+# - Usa CTEs para obtener el departamento ACTUAL (History vigente)
+# - Usa CTEs para obtener la tasa de pago mas RECIENTE
+# - Cruza con datos personales para obtener nombres y telefonos
 def extract_dim_employee(connection: Engine):
     df_employee = pd.read_sql_query('''
         WITH CurrentDepartment AS (
@@ -337,6 +354,10 @@ def extract_dim_employee(connection: Engine):
     return df_employee
 
 
+# Extrae hechos de ventas por internet (OnlineOrderFlag = 1)
+# - Filtra solo ventas online
+# - Proyecta las claves foraneas (Product, Customer, Territory, etc.)
+# - Calcula montos y descuentos a nivel de linea
 def extract_fact_internet_sales(connection: Engine):
     df_internet_sales = pd.read_sql_query('''
         SELECT 
@@ -368,6 +389,10 @@ def extract_fact_internet_sales(connection: Engine):
     return df_internet_sales
 
 
+# Extrae hechos de ventas de revendedores (OnlineOrderFlag = 0)
+# - Filtra solo ventas offline (Reseller)
+# - Cruza con Customer y Store para obtener la clave de Reseller
+# - Incluye Employee (Vendedor) que no aplica para ventas internet
 def extract_fact_reseller_sales(connection: Engine):
     df_reseller_sales = pd.read_sql_query('''
         SELECT 
